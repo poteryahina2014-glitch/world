@@ -85,6 +85,17 @@ button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #help summary{cursor:pointer;font-weight:600}
 #help ul{margin:4px 0;padding-left:20px}
 #help p{margin:6px 0}
+#welcome{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:15}
+#welcome .box{background:#fcfcf8;max-width:560px;width:calc(100% - 32px);max-height:88vh;overflow:auto;border-radius:14px;padding:20px 24px;font-size:15px;line-height:1.5}
+#welcome h1{margin:0 0 6px;font-size:22px}
+#welcome h3{margin:14px 0 6px;font-size:15px}
+#welcome p{margin:6px 0}
+#welcome ul{margin:4px 0;padding-left:20px}
+#welcome .feats{display:flex;flex-wrap:wrap;gap:5px}
+#welcome .feats span{background:#eaf3de;color:#27500a;border-radius:12px;padding:2px 9px;font-size:13px}
+#welcome .go{display:flex;justify-content:flex-end;margin-top:16px}
+#welcome .go button{background:var(--accent);color:#fff;border-color:var(--accent);font-size:15px;padding:6px 18px}
+@media (max-width:480px){#welcome .box{padding:16px;font-size:14px}}
 </style>
 </head>
 <body>
@@ -149,10 +160,33 @@ button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 <div id="card" class="panel"></div>
 
+<div id="welcome"><div class="box">
+  <h1>Привет! Это «Живой мир»</h1>
+  <p>Маленькая поляна, где человечки живут сами по себе: работают, дружат, ссорятся, влюбляются, растят детей, строят деревни. Никто ими не управляет — у каждого свой характер. Ты смотришь, что из этого выйдет.</p>
+  <h3>Что можно делать</h3>
+  <ul>
+    <li>Наблюдать, ускорять время и ставить на паузу.</li>
+    <li>Открыть карточку любого жителя: характер, семья, друзья, история.</li>
+    <li>Изредка вмешаться: привести странника, засыпать кусты ягодами, посадить куст, вызвать грозу, метель, засуху или болезнь.</li>
+    <li>Читать хронику и летопись, смотреть графики и знаменитостей.</li>
+  </ul>
+  <h3>Что уже есть в мире</h3>
+  <div class="feats">
+    <span>жители с характером</span><span>дружба и ссоры</span><span>пары и дети</span><span>старость и родословная</span>
+    <span>дома</span><span>ягоды и запасы на зиму</span><span>огороды</span><span>времена года и погода</span>
+    <span>река, броды и лодки</span><span>рыбалка</span><span>несколько деревень</span><span>староста и выборы</span>
+    <span>сплетни и репутация</span><span>обозы между деревнями</span><span>лес: рубят и сажают</span><span>зайцы, заборы, охота</span>
+    <span>навыки</span><span>инструменты и обмен</span><span>дым, листопад, следы на снегу</span>
+  </div>
+  <p>Подробно обо всём — в справке, кнопка <b>?</b> наверху.</p>
+  <div class="go"><button id="welcomeGo">Смотреть</button></div>
+</div></div>
+
 <div id="help"><div class="box">
   <h2>Справка <button id="helpClose" title="Закрыть">✕</button></h2>
   <details><summary>Что это</summary>
     <p>Маленький мир, который живёт сам по себе. Никто жителями не управляет: у каждого свой характер и свои потребности, а поступки складываются из них и из случайности. Жители дружат, ссорятся, создают пары, у них рождаются дети, они стареют и умирают. Наблюдай, что получится.</p>
+    <p>При первом открытии показывается окно-приветствие с кратким списком того, что есть в мире. <button id="welcomeAgain">Показать приветствие</button></p>
   </details>
   <details><summary>Управление</summary><ul>
     <li><b>Колёсико мыши</b> приближает и отдаляет.</li>

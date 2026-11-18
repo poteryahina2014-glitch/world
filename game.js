@@ -1926,7 +1926,8 @@ const help=document.getElementById('help');
 function toggleHelp(on){help.style.display=on?'flex':'none';}
 addEventListener('keydown',e=>{
   if(e.code==='Escape'){
-    if(help.style.display==='flex')toggleHelp(false);
+    if(welcomeEl.style.display==='flex')toggleWelcome(false);
+    else if(help.style.display==='flex')toggleHelp(false);
     else if(treeEl.style.display==='flex')treeEl.style.display='none';
     else if(chartsEl.style.display==='flex')toggleCharts(false);
     else if(annalsEl.style.display==='flex')annalsEl.style.display='none';
@@ -1953,6 +1954,13 @@ document.getElementById('addBush').onclick=()=>{
 document.getElementById('helpBtn').onclick=()=>toggleHelp(true);
 document.getElementById('helpClose').onclick=()=>toggleHelp(false);
 help.onclick=e=>{if(e.target===help)toggleHelp(false);};
+// приветствие: само показывается один раз (флаг в настройках), потом — из справки
+const welcomeEl=document.getElementById('welcome');
+function toggleWelcome(on){welcomeEl.style.display=on?'flex':'none';if(!on&&!settings.welcomed){settings.welcomed=true;saveSettings();}}
+document.getElementById('welcomeGo').onclick=()=>toggleWelcome(false);
+welcomeEl.onclick=e=>{if(e.target===welcomeEl)toggleWelcome(false);};
+document.getElementById('welcomeAgain').onclick=()=>{toggleHelp(false);toggleWelcome(true);};
+if(!TEST&&!settings.welcomed)toggleWelcome(true);
 const logFilters=document.getElementById('logFilters');
 logFilters.innerHTML=LOG_CATS.map(([k,l])=>`<button data-cat="${k}" class="${settings.logCats[k]?'on':''}">${l}</button>`).join('');
 logFilters.addEventListener('click',e=>{
