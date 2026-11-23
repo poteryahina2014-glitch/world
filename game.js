@@ -140,11 +140,13 @@ function renderLogEntry(e,append){
   const div=document.createElement('div');
   div.innerHTML=`<span class="t">День ${Math.floor(e.t/1440)+1}, ${fmtTime(e.t)}</span>${e.text}`;
   const log=document.getElementById('log');
+  const empty=log.querySelector('.log-empty');if(empty)empty.remove();
   if(append)log.append(div);else{log.prepend(div);while(log.children.length>400)log.lastChild.remove();}
 }
 function rerenderLog(){
   const log=document.getElementById('log');log.innerHTML='';
   for(const e of logArr)renderLogEntry(e,true);
+  if(logSearch&&!log.children.length)log.innerHTML='<div class="log-empty">Ничего не найдено</div>';
 }
 function addLog(ps,text){
   const e={t:minutes,text,cat:logCat(text)};
@@ -506,7 +508,8 @@ function addSkill(p,k,amt){
     addLog([p],famTrade?`${p.name} ${g(p,'пошёл','пошла')} по стопам родителей и ${g(p,'стал','стала')} ${title}`:`${p.name} ${g(p,'стал','стала')} ${title}`);
   }
 }
-const skillWord=v=>v>=0.85?'мастер':v>=0.6?'умелый':v>=0.3?'опытный':'новичок';
+const skillWord=(p,v)=>v>=0.85?'мастер':v>=0.6?g(p,'умелый','умелая'):v>=0.3?g(p,'опытный','опытная'):'новичок';
+const woodWords=n=>{const a=n%10,b=n%100;return n+' '+(a===1&&b!==11?'бревно':a>=2&&a<=4&&(b<12||b>14)?'бревна':'брёвен');};
 
 /* ---------- рождение и смерть ---------- */
 function birth(mom,dad){
@@ -525,9 +528,9 @@ function birth(mom,dad){
   for(const sid of mom.kids){const s=alive(sid);if(s&&s!==c&&dad.kids.includes(sid)){c.rel[s.id]=30;s.rel[c.id]=30;}}
   addLog([mom,dad,c],`${c.name} ${g(c,'родился','родилась')}, родители: ${mom.name} и ${dad.name}`);tally('births');
 }
-function spawnWanderer(){
+function spawnWanderer(intervention=false){
   const fem=Math.random()<0.5,w=makePerson(freeName(fem),fem,{born:minutes-rnd(18,30)*YEAR,x:pick([30,W-30]),y:rnd(100,H-100),origin:'wanderer'});
-  addLog([w],`На поляну ${g(w,'пришёл странник','пришла странница')} ${w.name}`);setBubble(w,'curious',60);
+  addLog([w],`${intervention?'Вмешательство: на':'На'} поляну ${g(w,'пришёл странник','пришла странница')} ${w.name}`);setBubble(w,'curious',60);
   return w;
 }
 function die(p,cause){
@@ -998,7 +1001,7 @@ function finishBuild(p,h){
       const top=Object.entries(h.contrib).sort((a,b)=>b[1]-a[1])[0];
       const tp=top&&byId.get(+top[0]);
       const what=(h.type==='fire'?'Общий костёр готов':h.type==='pier'?'Пристань с лодкой готова':'Общая кладовка готова')+(villages.length>1?` (${villageOf(h).name})`:'');
-      addLog(tp?[tp]:null,`${what}. Больше всех ${tp?g(tp,'потрудился','потрудилась')+' '+tp.name+' ('+top[1]+' бр.)':'трудились все'}`);
+      addLog(tp?[tp]:null,`${what}. Больше всех ${tp?g(tp,'потрудился','потрудилась')+' '+tp.name+' ('+woodWords(top[1])+')':'трудились все'}`);
     }
   }
 }
@@ -1833,7 +1836,7 @@ function updateCard(){
   const rels=Object.entries(p.rel).map(([id,v])=>[+id,v]).filter(([id])=>alive(id)&&!fam.has(id)).sort((a,b)=>b[1]-a[1]);
   const friends=rels.filter(r=>r[1]>10).slice(0,4),foes=rels.filter(r=>r[1]<-10).slice(-3).reverse();
   const relLine=([id,v])=>`<div class="row">${nameLink(id)}<span>${relWord(v)} (${Math.round(v)})</span></div>`;
-  const famName=id=>{const o=alive(id);return nameLink(id)+(o?` <span class="dead">(${Math.round(rel(p,o))})</span>`:'');};
+  const famName=id=>{const o=alive(id);return nameLink(id)+(o?` <span class="dead" title="Отношения: от −100 до +100">(${Math.round(rel(p,o))})</span>`:'');};
   const famRow=(label,ids)=>ids.length?`<div class="row"><span>${label}</span><span>${ids.map(famName).join(', ')}</span></div>`:'';
   const h=houseOf(p);
   const homeTxt=!h?'нет':h.owners.includes(p.id)?(h.built?`свой, запас ${h.food}`:`строится ${h.progress} из ${NEED.home}`):(h.built?`у родителей, запас ${h.food}`:'родители строят');
@@ -1842,10 +1845,10 @@ function updateCard(){
     <div class="act">${years(Math.floor(age(p)))} · ${activity(p)}</div>
     ${bar('Сытость',100-p.hunger,'#639922')}${bar('Бодрость',p.energy,'#378add')}${bar('Общение',100-p.social,'#7f77dd')}
     <h4 class="h4row"><span>Семья</span><button id="treeBtn">Родословная</button></h4>${famHtml}
-    <h4>Навыки</h4>${SKILLS.map(([k,l])=>bar(l,p.sk[k]*100,'#1d9e75',`${skillWord(p.sk[k])} (${Math.round(p.sk[k]*100)})`)).join('')}
+    <h4>Навыки</h4>${SKILLS.map(([k,l])=>bar(l,p.sk[k]*100,'#1d9e75',`${skillWord(p,p.sk[k])} (${Math.round(p.sk[k]*100)})`)).join('')}
     ${Object.keys(p.tools).length?`<div class="row"><span>Инструменты</span><span>${Object.entries(p.tools).map(([k,n])=>`${TOOLS[k][0]} (${n})`).join(', ')}</span></div>`:''}
     ${h&&h.built&&goodsCount(h)?`<div class="row"><span>Изделия дома</span><span>${Object.entries(h.goods).filter(([,n])=>n>0).map(([k,n])=>`${TOOLS[k][0]} ×${n}`).join(', ')}</span></div>`:''}
-    ${p.communal?`<div class="row"><span>Вклад в общие постройки</span><span>${p.communal} бр.</span></div>`:''}
+    ${p.communal?`<div class="row"><span>Вклад в общие постройки</span><span>${woodWords(p.communal)}</span></div>`:''}
     <h4>Характер</h4>${TRAITS.map(([k,l])=>bar(l,p.tr[k]*100,'#ba7517')).join('')}
     <div class="row"><span>Репутация</span><span>${repWord(p)}${p.known?` (${p.rep>0?'+':''}${p.rep}, знают ${p.known})`:''}</span></div>
     ${villages.length>1?`<div class="row"><span>Деревня</span><span>${villageOf(p).name}</span></div>`:''}
@@ -1943,7 +1946,7 @@ for(const [id,key] of [['optWanderers','wanderers'],['optEvents','events']]){
 }
 setPanel.addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset.ev;if(t)startEvent(t,true);});
 document.getElementById('settingsBtn').onclick=()=>{setPanel.style.display=setPanel.style.display==='block'?'none':'block';};
-document.getElementById('addWanderer').onclick=()=>{const w=spawnWanderer();w.x=clamp(cam.x+rnd(-80,80),40,W-40);w.y=clamp(cam.y+rnd(-80,80),40,H-40);};
+document.getElementById('addWanderer').onclick=()=>{const w=spawnWanderer(true);w.x=clamp(cam.x+rnd(-80,80),40,W-40);w.y=clamp(cam.y+rnd(-80,80),40,H-40);};
 document.getElementById('harvest').onclick=()=>{for(const b of bushes){b.b=Math.max(b.b,b.max);b.grow=0;}addLog(null,'Вмешательство: все кусты покрылись ягодами');};
 document.getElementById('addBush').onclick=()=>{
   let b,tries=0;
@@ -2034,9 +2037,10 @@ function renderChart(cvs,cfg,data){
   c.strokeStyle='#e6e8e0';c.lineWidth=1;c.fillStyle='#6a6a62';c.textAlign='right';c.textBaseline='middle';
   const ticks=bot?[top,0,-bot]:[top,top/2,0];
   for(const v of ticks){const y=Y(v);c.beginPath();c.moveTo(L,y);c.lineTo(L+pw,y);c.stroke();c.fillText(String(Math.abs(Math.round(v))),L-5,y);}
-  c.textAlign='center';c.textBaseline='top';
+  c.textAlign='left';c.textBaseline='top';c.fillText(`день ${data[0].d}`,L,T+ph+4);
+  c.textAlign='center';
   const every=Math.max(1,Math.ceil(n/6));
-  for(let i=0;i<n;i+=every)c.fillText(String(data[i].d),X(i),T+ph+4);
+  for(let i=every;i<n;i+=every)c.fillText(String(data[i].d),X(i),T+ph+4);
   if(cfg.type==='bars'){
     const bw=Math.max(1,step-2);
     for(const s of cfg.series){
@@ -2135,7 +2139,7 @@ function fameData(){
   cats.push({t:'Самый старый',top:fameTop(people,p=>age(p)),fmt:x=>years(Math.floor(x.v))});
   const fam=[...byId.values()].map(p=>({p,d:descendants(p)})).filter(x=>x.d.live>0).sort((a,b)=>b.d.live-a.d.live||b.d.all-a.d.all).slice(0,3);
   cats.push({t:'Самая большая семья',top:fam.map(x=>({p:x.p,v:x.d.live,all:x.d.all})),fmt:x=>`потомков ${x.v}${x.all>x.v?` (всего было ${x.all})`:''}`});
-  for(const [k] of SKILLS)cats.push({t:SKILL_TITLE[k],top:fameTop(people,p=>p.sk[k]>=0.3?p.sk[k]:0),fmt:x=>`${skillWord(x.v)}, ${Math.round(x.v*100)}`});
+  for(const [k] of SKILLS)cats.push({t:SKILL_TITLE[k],top:fameTop(people,p=>p.sk[k]>=0.3?p.sk[k]:0),fmt:x=>`${skillWord(x.p,x.v)}, ${Math.round(x.v*100)}`});
   cats.push({t:'Главный задира',top:fameTop(people,p=>p.fame.q),fmt:x=>`ссор ${x.v}`});
   cats.push({t:'Самый добрый',top:fameTop(people,p=>p.fame.treat+p.fame.help),fmt:x=>`угощений ${x.p.fame.treat}, помощи ${x.p.fame.help}`});
   cats.push({t:'Любимец деревни',top:fameTop(people.filter(p=>p.known>=3&&!isChild(p)),p=>p.rep),fmt:x=>`репутация +${x.v}`});
