@@ -95,8 +95,8 @@ button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 #welcome .feats span{background:#eaf3de;color:#27500a;border-radius:12px;padding:2px 9px;font-size:13px}
 #welcome .go{display:flex;justify-content:flex-end;margin-top:16px}
 #welcome .go button{background:var(--accent);color:#fff;border-color:var(--accent);font-size:15px;padding:6px 18px}
-@media (max-width:1299px){#top{right:10px}#chron{top:calc(var(--top-height, 0px) + 20px);max-height:calc(100% - var(--top-height, 0px) - 30px)}#chron:not(.closed){height:calc(100% - var(--top-height, 0px) - 30px)}#settings{top:calc(var(--top-height, 0px) + 20px);left:10px}}
-@media (max-width:600px){#chron{width:calc(100% - 20px)}#chron:not(.closed){height:min(50vh,calc(100% - var(--top-height, 0px) - 30px))}}
+@media (max-width:1299px){#top{right:10px}#card{top:calc(var(--top-height, 0px) + 20px);height:calc(100% - var(--top-height, 0px) - 30px)}#chron{top:calc(var(--top-height, 0px) + 20px);max-height:calc(100% - var(--top-height, 0px) - 30px)}#chron:not(.closed){height:calc(100% - var(--top-height, 0px) - 30px)}#settings{top:calc(var(--top-height, 0px) + 20px);left:10px}}
+@media (max-width:600px){#card{top:calc(var(--top-height, 0px) + 69px);height:calc(100% - var(--top-height, 0px) - 79px);z-index:3}#chron{width:calc(100% - 20px)}#chron:not(.closed){height:min(50vh,calc(100% - var(--top-height, 0px) - 30px))}}
 @media (max-width:480px){#welcome .box{padding:16px;font-size:14px}}
 </style>
 </head>
@@ -397,7 +397,7 @@ button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   </details>
 </div></div>
 
-<script src="game.js?v=2"></script>
+<script src="game.js?v=3"></script>
 <script>if(location.search.includes('test')){const t=document.createElement('script');t.src='tests.js';document.body.append(t);}</script>
 </body>
 </html>
