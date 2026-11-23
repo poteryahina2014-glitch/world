@@ -1812,8 +1812,8 @@ function draw(){
 
 /* ---------- карточка ---------- */
 const card=document.getElementById('card');
-let cardHeld=false,cardHtml='';
-function hideCard(){card.style.display='none';cardHtml='';}
+let cardHeld=false,cardHtml='',cardFor=null;
+function hideCard(){card.style.display='none';cardHtml='';cardFor=null;}
 function bar(label,v,c,right){v=clamp(v,0,100);return `<div class="row"><span>${label}</span><span>${right??Math.round(v)}</span></div><div class="bar"><i style="width:${v}%;background:${c}"></i></div>`;}
 function relWord(r){return r>=75?'неразлучны':r>=40?'друзья':r>10?'приятели':r<=-35?'враги':r<-10?'не ладят':'знакомы';}
 function nameLink(id){const p=byId.get(id);if(!p)return '';return p.dead?`<span class="dead">${p.name} ✝</span>`:`<span class="who" data-id="${id}">${p.name}</span>`;}
@@ -1873,8 +1873,8 @@ function updateCard(){
     <h4>Отношения</h4>${friends.length||foes.length?friends.map(relLine).join('')+foes.map(relLine).join(''):'<div class="hist">пока ни с кем</div>'}
     <h4>История</h4>${p.hist.length?p.hist.slice(0,8).map(e=>`<div class="hist">День ${Math.floor(e.t/1440)+1}, ${fmtTime(e.t)}: ${e.text}</div>`).join(''):'<div class="hist">пока ничего</div>'}`;
   if(cardHeld)return;
-  if(html!==cardHtml){const scroll=card.scrollTop;card.innerHTML=html;cardHtml=html;card.scrollTop=scroll;}
   card.style.display='block';
+  if(html!==cardHtml){const scroll=cardFor===p.id?card.scrollTop:0;card.innerHTML=html;cardHtml=html;cardFor=p.id;card.scrollTop=scroll;}
 }
 function selectPerson(id){const p=alive(+id);if(p){selected=p;follow=true;updateCard();}}
 card.addEventListener('click',e=>{
@@ -1956,6 +1956,7 @@ addEventListener('keydown',e=>{
     else if(treeEl.style.display==='flex')treeEl.style.display='none';
     else if(chartsEl.style.display==='flex')toggleCharts(false);
     else if(annalsEl.style.display==='flex')annalsEl.style.display='none';
+    else if(fameEl.style.display==='flex')fameEl.style.display='none';
     else if(setPanel.style.display==='block')setPanel.style.display='none';
     else{selected=null;follow=false;hideCard();}
   }
