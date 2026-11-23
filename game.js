@@ -1,9 +1,11 @@
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const TEST=location.search.includes('test');
-const W=3600,H=2400,R=14,MIN_PER_SEC=4,WALK=16,YEAR=1440,MAX_POP=300,SAVE_KEY=TEST?'livingWorld.test':'livingWorld.v1';
+const W=3600,H=2400,R=14,MIN_Z=0.25,MIN_PER_SEC=4,WALK=16,YEAR=1440,MAX_POP=300,SAVE_KEY=TEST?'livingWorld.test':'livingWorld.v1';
 let DPR=1;
-function resize(){DPR=window.devicePixelRatio||1;cv.width=innerWidth*DPR;cv.height=innerHeight*DPR;}
+let cameraNeedsFit=false;
+function resize(){DPR=window.devicePixelRatio||1;cv.width=innerWidth*DPR;cv.height=innerHeight*DPR;const top=document.getElementById('top');if(top)document.documentElement.style.setProperty('--top-height',top.offsetHeight+'px');if(cameraNeedsFit&&innerWidth&&innerHeight){fitCamera();centerCameraOnResidents();cameraNeedsFit=false;}}
 addEventListener('resize',resize);resize();
+if(window.ResizeObserver)new ResizeObserver(()=>document.documentElement.style.setProperty('--top-height',document.getElementById('top').offsetHeight+'px')).observe(document.getElementById('top'));
 
 const rnd=(a=1,b)=>b===undefined?Math.random()*a:a+Math.random()*(b-a);
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -51,6 +53,16 @@ function snapshotDay(d){
 }
 let speed=1,selected=null,follow=false,hover=null;
 const cam={x:W/2,y:H/2,z:0.6};
+
+function fitCamera(){cam.z=clamp(Math.min(innerWidth/W,innerHeight/H)*1.6,MIN_Z,3.5);}
+function residentCenter(){
+  const outdoors=people.filter(p=>!p.inHouse),targets=outdoors.length?outdoors:villages.filter(v=>!v.empty);
+  if(!targets.length)return null;
+  return {x:targets.reduce((n,p)=>n+p.x,0)/targets.length,y:targets.reduce((n,p)=>n+p.y,0)/targets.length};
+}
+function centerCameraOnResidents(){const c=residentCenter();if(c){cam.x=c.x;cam.y=c.y;}}
+function cameraShowsResident(){return people.some(p=>Math.abs(p.x-cam.x)<=innerWidth/(2*cam.z)&&Math.abs(p.y-cam.y)<=innerHeight/(2*cam.z));}
+function showResidentsIfNeeded(){if(!people.length)return;if(!innerWidth||!innerHeight){cameraNeedsFit=true;return;}if(!cameraShowsResident())centerCameraOnResidents();}
 
 const day=()=>Math.floor(minutes/1440)+1;
 const hour=()=>(minutes/60)%24;
@@ -112,7 +124,8 @@ function newWorld(){
   for(const [n,f] of shuffle(names))makePerson(n,f,{x:W/2+rnd(-600,350),y:H/2+rnd(-400,400)});
   selected=null;follow=false;hideCard();
   addLog(null,'На поляне поселились 16 жителей. Сейчас весна');
-  cam.x=W/2;cam.y=H/2;cam.z=Math.min(innerWidth/W,innerHeight/H)*1.6;
+  cam.x=W/2;cam.y=H/2;
+  if(innerWidth&&innerHeight){fitCamera();centerCameraOnResidents();}else{cam.z=MIN_Z;cameraNeedsFit=true;}
 }
 
 /* ---------- хроника ---------- */
@@ -1460,7 +1473,10 @@ function load(){
     for(const p of people){const h=houseOf(p);p.village??=h?h.village:nearestVillage(p);}
     const log=document.getElementById('log');log.innerHTML='';
     for(const e of logArr)renderLogEntry(e,true);
-    Object.assign(cam,s.cam);speed=s.speed??1;
+    if(s.cam&&Number.isFinite(s.cam.x)&&Number.isFinite(s.cam.y)&&Number.isFinite(s.cam.z)){
+      cam.x=clamp(s.cam.x,0,W);cam.y=clamp(s.cam.y,0,H);cam.z=clamp(s.cam.z,MIN_Z,3.5);
+    }else{cam.x=W/2;cam.y=H/2;fitCamera();}
+    showResidentsIfNeeded();speed=s.speed??1;
     return true;
   }catch(e){console.error(e);return false;}
 }
@@ -1796,7 +1812,8 @@ function draw(){
 
 /* ---------- карточка ---------- */
 const card=document.getElementById('card');
-function hideCard(){card.style.display='none';}
+let cardHeld=false,cardHtml='';
+function hideCard(){card.style.display='none';cardHtml='';}
 function bar(label,v,c,right){v=clamp(v,0,100);return `<div class="row"><span>${label}</span><span>${right??Math.round(v)}</span></div><div class="bar"><i style="width:${v}%;background:${c}"></i></div>`;}
 function relWord(r){return r>=75?'неразлучны':r>=40?'друзья':r>10?'приятели':r<=-35?'враги':r<-10?'не ладят':'знакомы';}
 function nameLink(id){const p=byId.get(id);if(!p)return '';return p.dead?`<span class="dead">${p.name} ✝</span>`:`<span class="who" data-id="${id}">${p.name}</span>`;}
@@ -1841,7 +1858,7 @@ function updateCard(){
   const h=houseOf(p);
   const homeTxt=!h?'нет':h.owners.includes(p.id)?(h.built?`свой, запас ${h.food}`:`строится ${h.progress} из ${NEED.home}`):(h.built?`у родителей, запас ${h.food}`:'родители строят');
   const famHtml=(p.partner!==null?famRow('Пара',[p.partner]):'')+famRow('Родители',p.parents)+famRow('Дети',p.kids)+`<div class="row"><span>Дом</span><span>${homeTxt}</span></div>`+(h&&h.built&&plotsOf(h).length?`<div class="row"><span>Огород</span><span>${plotWords(plotsOf(h))}</span></div>`:'');
-  card.innerHTML=`<h2><span>${p.name}</span><button id="cardClose" title="Закрыть">✕</button></h2>
+  const html=`<h2><span>${p.name}</span><button id="cardClose" title="Закрыть">✕</button></h2>
     <div class="act">${years(Math.floor(age(p)))} · ${activity(p)}</div>
     ${bar('Сытость',100-p.hunger,'#639922')}${bar('Бодрость',p.energy,'#378add')}${bar('Общение',100-p.social,'#7f77dd')}
     <h4 class="h4row"><span>Семья</span><button id="treeBtn">Родословная</button></h4>${famHtml}
@@ -1855,6 +1872,8 @@ function updateCard(){
     ${isChief(p)?`<div class="row"><span>Должность</span><span>староста с ${chiefVillage(p).chiefSince}-го дня</span></div>`:''}
     <h4>Отношения</h4>${friends.length||foes.length?friends.map(relLine).join('')+foes.map(relLine).join(''):'<div class="hist">пока ни с кем</div>'}
     <h4>История</h4>${p.hist.length?p.hist.slice(0,8).map(e=>`<div class="hist">День ${Math.floor(e.t/1440)+1}, ${fmtTime(e.t)}: ${e.text}</div>`).join(''):'<div class="hist">пока ничего</div>'}`;
+  if(cardHeld)return;
+  if(html!==cardHtml){const scroll=card.scrollTop;card.innerHTML=html;cardHtml=html;card.scrollTop=scroll;}
   card.style.display='block';
 }
 function selectPerson(id){const p=alive(+id);if(p){selected=p;follow=true;updateCard();}}
@@ -1864,6 +1883,9 @@ card.addEventListener('click',e=>{
   const id=e.target.dataset&&e.target.dataset.id;
   if(id!==undefined)selectPerson(id);
 });
+card.addEventListener('pointerdown',()=>{cardHeld=true;});
+document.addEventListener('pointerup',()=>{cardHeld=false;});
+document.addEventListener('pointercancel',()=>{cardHeld=false;});
 
 /* ---------- родословная ---------- */
 const treeEl=document.getElementById('tree');
@@ -1897,7 +1919,7 @@ treeEl.addEventListener('click',e=>{
 /* ---------- управление ---------- */
 const toWorld=(sx,sy)=>({x:cam.x+(sx-innerWidth/2)/cam.z,y:cam.y+(sy-innerHeight/2)/cam.z});
 function personAt(sx,sy){
-  const w=toWorld(sx,sy);let best=null,bd=R*1.6;
+  const w=toWorld(sx,sy);let best=null,bd=Math.max(R*1.6,16/cam.z);
   for(const p of people){if(p.inHouse)continue;const d=Math.hypot(p.x-w.x,p.y-(w.y+R*0.1));if(d<bd){bd=d;best=p;}}
   return best;
 }
@@ -1917,7 +1939,7 @@ cv.addEventListener('pointerup',e=>{
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
   const before=toWorld(e.clientX,e.clientY);
-  cam.z=clamp(cam.z*Math.exp(-e.deltaY*0.0015),0.25,3.5);
+  cam.z=clamp(cam.z*Math.exp(-e.deltaY*0.0015),MIN_Z,3.5);
   const after=toWorld(e.clientX,e.clientY);
   if(!follow){cam.x+=before.x-after.x;cam.y+=before.y-after.y;}
 },{passive:false});
@@ -1934,6 +1956,7 @@ addEventListener('keydown',e=>{
     else if(treeEl.style.display==='flex')treeEl.style.display='none';
     else if(chartsEl.style.display==='flex')toggleCharts(false);
     else if(annalsEl.style.display==='flex')annalsEl.style.display='none';
+    else if(setPanel.style.display==='block')setPanel.style.display='none';
     else{selected=null;follow=false;hideCard();}
   }
   if(e.code==='Space'){e.preventDefault();if(speed){prevSpeed=speed;setSpeed(0);}else setSpeed(prevSpeed);}
@@ -1945,7 +1968,12 @@ for(const [id,key] of [['optWanderers','wanderers'],['optEvents','events']]){
   el.onchange=()=>{settings[key]=el.checked;saveSettings();};
 }
 setPanel.addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset.ev;if(t)startEvent(t,true);});
-document.getElementById('settingsBtn').onclick=()=>{setPanel.style.display=setPanel.style.display==='block'?'none':'block';};
+const settingsBtn=document.getElementById('settingsBtn');
+settingsBtn.onclick=()=>{
+  const opening=setPanel.style.display!=='block';setPanel.style.display=opening?'block':'none';
+  if(opening&&card.style.display==='block'){const a=setPanel.getBoundingClientRect(),b=card.getBoundingClientRect();if(a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top){selected=null;follow=false;hideCard();}}
+};
+document.addEventListener('pointerdown',e=>{if(setPanel.style.display==='block'&&e.target!==settingsBtn&&!setPanel.contains(e.target))setPanel.style.display='none';});
 document.getElementById('addWanderer').onclick=()=>{const w=spawnWanderer(true);w.x=clamp(cam.x+rnd(-80,80),40,W-40);w.y=clamp(cam.y+rnd(-80,80),40,H-40);};
 document.getElementById('harvest').onclick=()=>{for(const b of bushes){b.b=Math.max(b.b,b.max);b.grow=0;}addLog(null,'Вмешательство: все кусты покрылись ягодами');};
 document.getElementById('addBush').onclick=()=>{
@@ -1972,7 +2000,10 @@ logFilters.addEventListener('click',e=>{
   saveSettings();rerenderLog();
 });
 document.getElementById('logSearch').addEventListener('input',e=>{logSearch=makeSearch(e.target.value.trim());rerenderLog();});
-document.getElementById('chronHead').onclick=()=>{const c=document.getElementById('chron');c.classList.toggle('closed');document.getElementById('chronArrow').textContent=c.classList.contains('closed')?'▸':'▾';};
+const chron=document.getElementById('chron');
+function setChronClosed(closed,remember){chron.classList.toggle('closed',closed);document.getElementById('chronArrow').textContent=closed?'▸':'▾';if(remember){settings.chronClosed=closed;saveSettings();}}
+setChronClosed(settings.chronClosed===undefined?innerWidth<=600:settings.chronClosed,settings.chronClosed===undefined);
+document.getElementById('chronHead').onclick=()=>setChronClosed(!chron.classList.contains('closed'),true);
 
 /* ---------- графики ---------- */
 const C1='#2a78d6',C2='#eb6834',C3='#1baf7a';
